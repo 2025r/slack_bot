@@ -2,7 +2,7 @@ name: Slack Auto Post Test
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # 1分ごとに実行
+    - cron: '0 0 * * *'  # 毎日午前0時 (UTC) に実行
   push:  # GitHub でファイルを編集すると実行
   workflow_dispatch:  # 手動実行も可能
 
