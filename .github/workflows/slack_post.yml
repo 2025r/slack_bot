@@ -27,4 +27,4 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # GitHub Secrets から取得
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}  # GitHub Secrets から取得
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}  # GitHub Secrets から取得
-        run: python scripts/gemini_to_slack.py
+        run: python slack_bot/gemini_to_slack.py
