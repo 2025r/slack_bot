@@ -2,9 +2,8 @@ name: Slack Auto Post Test
 
 on:
   schedule:
-    - cron: "0 */1 * * *"  # 毎日 9:00 JST に実行
-  push:  # GitHub でファイルを編集すると実行
-  workflow_dispatch:  # 手動実行も可能
+    - cron: "0 0 * * *"  # 毎日午前 0 時 (UTC)
+  workflow_dispatch:
 
 jobs:
   post_to_slack:
@@ -17,14 +16,14 @@ jobs:
       - name: Python をセットアップ
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: 依存関係をインストール
-        run: pip install requests google-generativeai
+        run: pip install -r requirements.txt
 
-      - name: Slack へ Gemini の自動メッセージを投稿
+      - name: Gemini と Slack を使った投稿
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # GitHub Secrets から取得
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}  # GitHub Secrets から取得
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}  # GitHub Secrets から取得
-        run: python gemini_to_slack.py
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: python scripts/gemini_to_slack.py
