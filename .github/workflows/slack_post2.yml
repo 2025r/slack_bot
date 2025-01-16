@@ -1,0 +1,29 @@
+name: Slack Auto Post Test2
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # 1分ごとに実行
+  push:  # GitHub でファイルを編集すると実行
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  post_to_slack:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v3
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 依存関係をインストール
+        run: pip install requests
+
+      - name: Slack へメッセージを投稿
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}  # GitHub Secrets から取得
+          SLACK_USER_ID: ${{ secrets.SLACK_USER_ID }}  # GitHub Secrets から取得
+        run: python slack_post.py
