@@ -6,11 +6,10 @@ from datetime import datetime
 # 環境変数から API キーを取得
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SLACK_TOKEN = os.getenv("SLACK_TOKEN")
-SLACK_CHANNEL_ID = os.getenv("SLACK_CHANNEL_ID")  # Slackの投稿先チャンネルID
 
 # 必須環境変数の確認
-if not GEMINI_API_KEY or not SLACK_TOKEN or not SLACK_CHANNEL_ID:
-    raise ValueError("環境変数 (GEMINI_API_KEY, SLACK_TOKEN, SLACK_CHANNEL_ID) が設定されていません。")
+if not GEMINI_API_KEY or not SLACK_TOKEN:
+    raise ValueError("環境変数 (GEMINI_API_KEY, SLACK_TOKEN) が設定されていません。")
 
 # Gemini API の設定
 genai.configure(api_key=GEMINI_API_KEY)
