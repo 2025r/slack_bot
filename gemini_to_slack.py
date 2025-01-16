@@ -6,6 +6,7 @@ from datetime import datetime
 # 環境変数から API キーを取得
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SLACK_TOKEN = os.getenv("SLACK_TOKEN")
+USER_ID = os.getenv("SLACK_USER_ID")  # GitHub Secrets から取得
 
 # 必須環境変数の確認
 if not GEMINI_API_KEY or not SLACK_TOKEN:
