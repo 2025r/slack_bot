@@ -24,6 +24,6 @@ jobs:
       - name: Gemini と Slack を使った投稿
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}  # GitHub Secrets から取得
+          SLACK_USER_ID: ${{ secrets.SLACK_USER_ID }}  # GitHub Secrets から取得
         run: python gemini_to_slack.py
