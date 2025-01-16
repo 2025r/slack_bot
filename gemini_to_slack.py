@@ -26,8 +26,15 @@ today_date = datetime.now().strftime("%Y-%m-%d")
 message = f"📢 {today_date} のAI投稿: {ai_message}"
 
 # Slack に投稿
-headers = {"Authorization": f"Bearer {SLACK_TOKEN}", "Content-Type": "application/json"}
-payload = {"channel": SLACK_CHANNEL_ID, "text": message}
+headers = {
+    "Authorization": f"Bearer {SLACK_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+payload = {
+    "channel": USER_ID,  # DM に送る
+    "text": message
+}
 
 slack_response = requests.post("https://slack.com/api/chat.postMessage", headers=headers, json=payload)
 data = slack_response.json()
