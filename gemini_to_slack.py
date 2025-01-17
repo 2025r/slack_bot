@@ -22,7 +22,7 @@ response = model.generate_content(contents=[prompt])
 ai_message = response.text if response.text else "AIの考察を生成できませんでした。"
 
 # 投稿するメッセージ
-today_date = datetime.now().strftime("%Y-%m-%d")
+today_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 message = f"📢 {today_date} のAI投稿: {ai_message}"
 
 # Slack に投稿
