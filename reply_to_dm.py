@@ -68,14 +68,33 @@ def reply_to_dm_message(dm_channel_id, ts, text):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
     print(f"✅ メッセージに返信しました: {reply_text}")
 
+# メッセージがない場合に通知
+def notify_no_messages(dm_channel_id):
+    headers = {"Authorization": f"Bearer {SLACK_TOKEN}", "Content-Type": "application/json"}
+    no_message_text = "最近のメッセージはありませんでした。"
+    payload = {"channel": dm_channel_id, "text": no_message_text}
+
+    response = requests.post(f"{SLACK_API_URL}/chat.postMessage", headers=headers, json=payload)
+    data = response.json()
+    print(f"空メッセージ通知レスポンス: {data}")
+
+    if not data.get("ok"):
+        raise Exception(f"Slack APIエラー: {data.get('error')}")
+    print(f"✅ 空メッセージ通知を送信しました: {no_message_text}")
+
 # 実行
 if __name__ == "__main__":
     try:
         messages, dm_channel_id = fetch_recent_dm_messages()
-        for message in messages:
-            if "bot_id" not in message:  # ボット以外の投稿を処理
-                ts = message.get("ts")
-                text = message.get("text")
-                reply_to_dm_message(dm_channel_id, ts, text)
+
+        if not messages:
+            print("最近のメッセージはありません。")
+            notify_no_messages(dm_channel_id)
+        else:
+            for message in messages:
+                if "bot_id" not in message:  # ボット以外の投稿を処理
+                    ts = message.get("ts")
+                    text = message.get("text")
+                    reply_to_dm_message(dm_channel_id, ts, text)
     except Exception as e:
         print(f"❌ エラーが発生しました: {e}")
