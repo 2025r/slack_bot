@@ -7,7 +7,6 @@ import time
 
 # 環境変数から API キーを取得
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_KEY2 = os.getenv("GEMINI_API_KEY2")
 SLACK_TOKEN = os.getenv("SLACK_TOKEN")
 SLACK_USER_ID = os.getenv("SLACK_USER_ID")  # DM先のユーザーID
 
@@ -15,16 +14,16 @@ SLACK_USER_ID = os.getenv("SLACK_USER_ID")  # DM先のユーザーID
 if not GEMINI_API_KEY or not SLACK_TOKEN or not SLACK_USER_ID:
     raise ValueError("環境変数 (GEMINI_API_KEY, SLACK_TOKEN, SLACK_USER_ID) が設定されていません。")
 
-# Slack API エンドポイント
-SLACK_API_URL = "https://slack.com/api"
-headers = {"Authorization": f"Bearer {SLACK_TOKEN}"}
-
 # Geminiの初期設定
 def configure_gemini(api_key):
     genai.configure(api_key=api_key)
     print(f"Gemini APIキー {api_key} を使用します。")
 
 configure_gemini(GEMINI_API_KEY)
+
+# Slack API エンドポイント
+SLACK_API_URL = "https://slack.com/api"
+headers = {"Authorization": f"Bearer {SLACK_TOKEN}"}
 
 # DMチャネルのIDを取得
 def get_dm_channel_id(user_id):
@@ -38,70 +37,37 @@ def get_dm_channel_id(user_id):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
     return data["channel"]["id"]
 
-# 最新のDMメッセージを取得
-def get_last_message(channel_id):
-    response = requests.get(
-        f"{SLACK_API_URL}/conversations.history",
-        headers=headers,
-        params={"channel": channel_id, "limit": 1}
-    )
-    data = response.json()
-    if not data.get("ok"):
-        raise Exception(f"Slack APIエラー: {data.get('error')}")
-    messages = data.get("messages", [])
-    if messages:
-        return messages[0].get("text")
-    return None
+# 長文からトピックを抽出
+def generate_topics_with_improved_prompt(message):
+    prompt = f"""
+    次の文章から重要なトピックを抽出してください。
+    - トピックは箇条書き形式で出力してください。
+    - 1つのトピックは20～50文字程度に簡潔にまとめてください。
+    - 曖昧な表現や文脈を持たないフレーズ（例: "さらに" や "以下のように"）を含めないでください。
+    - 文章内で強調されている重要なキーワードやテーマに基づいてトピックを抽出してください。
+    - トピックは完全な文または意味のあるフレーズである必要があります。
 
-# 140字以上の文章を生成
-def generate_long_message(prompt):
-    try:
-        response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-        return response.text.strip() if response.text else "AIの考察を生成できませんでした。"
-    except Exception as e:
-        print(f"⚠️ Gemini APIエラー (長文生成): {e}")
-        if GEMINI_API_KEY2:
-            print("GEMINI_API_KEY2 に切り替えます...")
-            configure_gemini(GEMINI_API_KEY2)
-            response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-            return response.text.strip() if response.text else "AIの考察を生成できませんでした。"
-        else:
-            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
+    対象の文章:
+    {message}
+    """
+    response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
+    topics_text = response.text.strip() if response.text else "トピックが生成できませんでした。"
+    topics = [topic.strip() for topic in topics_text.split("\n") if topic.strip()]
+    return topics
 
-# トピックを生成（複数のトピックを抽出）
-def generate_topics_from_message(message):
-    prompt = f"次の文章からトピックを複数抽出してください: {message}"
-    try:
-        response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-        topics_text = response.text.strip() if response.text else "トピックが生成できませんでした。"
-        topics = [topic.strip() for topic in topics_text.split("\n") if topic.strip()]
-        return topics
-    except Exception as e:
-        print(f"⚠️ Gemini APIエラー (トピック生成): {e}")
-        if GEMINI_API_KEY2:
-            print("GEMINI_API_KEY2 に切り替えます...")
-            configure_gemini(GEMINI_API_KEY2)
-            response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-            topics_text = response.text.strip() if response.text else "トピックが生成できませんでした。"
-            return [topic.strip() for topic in topics_text.split("\n") if topic.strip()]
-        else:
-            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
+# トピックを基に140字以内で要約
+def summarize_topic_with_improved_prompt(topic):
+    prompt = f"""
+    次のトピックについて、140字以内で要約してください。
+    - 要約は丁寧語で、簡潔かつ明確に記述してください。
+    - トピックの重要なポイントを中心に、読者に伝わりやすいようにしてください。
+    - 具体例や数字があれば、それを盛り込んでください。
 
-# トピックを基に140字以内に要約
-def summarize_message_from_topic(topic):
-    prompt = f"次のトピックについて140字以内で要約してください。畏まりすぎない丁寧語（です・ます調）でお願いします。: {topic}"
-    try:
-        response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-        return response.text.strip() if response.text else "要約が生成できませんでした。"
-    except Exception as e:
-        print(f"⚠️ Gemini APIエラー (要約生成): {e}")
-        if GEMINI_API_KEY2:
-            print("GEMINI_API_KEY2 に切り替えます...")
-            configure_gemini(GEMINI_API_KEY2)
-            response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-            return response.text.strip() if response.text else "要約が生成できませんでした。"
-        else:
-            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
+    トピック:
+    {topic}
+    """
+    response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
+    return response.text.strip() if response.text else "要約が生成できませんでした。"
 
 # Slackに投稿
 def post_to_slack(channel_id, message):
@@ -128,9 +94,8 @@ if __name__ == "__main__":
         # DMチャネルIDを取得
         dm_channel_id = retry_with_backoff(get_dm_channel_id, user_id=SLACK_USER_ID)
 
-        # 前回の投稿内容を取得
-        last_message = retry_with_backoff(get_last_message, channel_id=dm_channel_id)
-        print(f"前回の投稿内容: {last_message}")
+        # 初回または前回の投稿内容 (仮に last_message を None とする)
+        last_message = None  # 初回は None、以降はSlack投稿内容などをここに設定
 
         # 初回または次の内容を生成
         if last_message:
@@ -143,7 +108,7 @@ if __name__ == "__main__":
         print(f"生成された長文: {long_message}")
 
         # 長文から複数のトピックを抽出
-        topics = retry_with_backoff(generate_topics_from_message, message=long_message)
+        topics = retry_with_backoff(generate_topics_with_improved_prompt, message=long_message)
         print(f"抽出されたトピック: {topics}")
 
         if not topics:
@@ -154,7 +119,7 @@ if __name__ == "__main__":
         print(f"選択されたトピック: {selected_topic}")
 
         # 選択されたトピックを基に140字以内で要約
-        short_message = retry_with_backoff(summarize_message_from_topic, topic=selected_topic)
+        short_message = retry_with_backoff(summarize_topic_with_improved_prompt, topic=selected_topic)
         print(f"生成された要約: {short_message}")
 
         # Slackに投稿
