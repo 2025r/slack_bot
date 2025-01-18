@@ -41,18 +41,15 @@ def get_last_message(channel_id):
     messages = data.get("messages", [])
     return messages[0]["text"] if messages else None
 
-# Gemini AI に基づく投稿内容を生成
-def generate_ai_message(last_message=None):
-    prompt = (
-        "人工知能の歴史について、簡潔に説明してください。"
-        if not last_message
-        else f"前回の投稿『{last_message[:50]}』を基に、人工知能の歴史を拡張したコメントを生成してください。"
-    )
+# Gemini AI に基づく話を広げて要約（140文字以内）
+def expand_and_summarize(last_message):
+    if not last_message:
+        prompt = "人工知能の歴史について話を広げ、140文字以内に要約してください。"
+    else:
+        prompt = f"次の内容を基に話を広げて、140文字以内に要約してください:『{last_message}』"
     genai.configure(api_key=GEMINI_API_KEY)
     response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-    generated_text = response.text if response.text else "AIの考察を生成できませんでした。"
-    # 140文字にトリミング
-    return generated_text[:140] + "..." if len(generated_text) > 140 else generated_text
+    return response.text.strip() if response.text else "AIの考察を生成できませんでした。"
 
 # Slack に投稿
 def post_to_slack(channel_id, message):
@@ -72,12 +69,12 @@ if __name__ == "__main__":
         # 最後のメッセージを取得
         last_message = get_last_message(dm_channel_id)
 
-        # Gemini AIで新しい投稿を生成
-        ai_message = generate_ai_message(last_message)
+        # Gemini AIで話を広げて140文字以内に要約
+        ai_expanded_summary = expand_and_summarize(last_message)
 
         # 投稿メッセージを準備
         today_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        message = f"📢 {today_date} のAI投稿:\n{ai_message}"
+        message = f"📢 {today_date} のAI投稿:\n{ai_expanded_summary}"
 
         # Slackに投稿
         post_to_slack(dm_channel_id, message)
