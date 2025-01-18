@@ -7,6 +7,7 @@ import time
 
 # 環境変数から API キーを取得
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY2 = os.getenv("GEMINI_API_KEY2")
 SLACK_TOKEN = os.getenv("SLACK_TOKEN")
 SLACK_USER_ID = os.getenv("SLACK_USER_ID")  # DM先のユーザーID
 
@@ -14,16 +15,16 @@ SLACK_USER_ID = os.getenv("SLACK_USER_ID")  # DM先のユーザーID
 if not GEMINI_API_KEY or not SLACK_TOKEN or not SLACK_USER_ID:
     raise ValueError("環境変数 (GEMINI_API_KEY, SLACK_TOKEN, SLACK_USER_ID) が設定されていません。")
 
+# Slack API エンドポイント
+SLACK_API_URL = "https://slack.com/api"
+headers = {"Authorization": f"Bearer {SLACK_TOKEN}"}
+
 # Geminiの初期設定
 def configure_gemini(api_key):
     genai.configure(api_key=api_key)
     print(f"Gemini APIキー {api_key} を使用します。")
 
 configure_gemini(GEMINI_API_KEY)
-
-# Slack API エンドポイント
-SLACK_API_URL = "https://slack.com/api"
-headers = {"Authorization": f"Bearer {SLACK_TOKEN}"}
 
 # DMチャネルのIDを取得
 def get_dm_channel_id(user_id):
@@ -37,42 +38,46 @@ def get_dm_channel_id(user_id):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
     return data["channel"]["id"]
 
-# 140字以上の文章を生成
-def generate_long_message(prompt):
+# 長文生成とトピック抽出を1回で実行
+def generate_long_message_and_topics(prompt):
+    try:
+        improved_prompt = (
+            f"次のテーマについて詳しく説明し、関連するトピックを箇条書きで列挙してください: {prompt}\n"
+            "説明は詳細に、トピックは簡潔にしてください。"
+        )
+        response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[improved_prompt])
+        if response.text:
+            full_text = response.text.strip()
+            split_index = full_text.rfind("\n")  # 最後の改行を探して分割
+            long_message = full_text[:split_index].strip()
+            topics_text = full_text[split_index + 1:].strip()
+            topics = [topic.strip("- ") for topic in topics_text.split("\n") if topic.strip()]
+            return long_message, topics
+        else:
+            raise Exception("Gemini APIからの応答が空でした。")
+    except Exception as e:
+        print(f"⚠️ Gemini APIエラー (長文生成とトピック抽出): {e}")
+        if GEMINI_API_KEY2:
+            print("GEMINI_API_KEY2 に切り替えます...")
+            configure_gemini(GEMINI_API_KEY2)
+            return generate_long_message_and_topics(prompt)
+        else:
+            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
+
+# トピックを基に140字以内に要約
+def summarize_topic_with_improved_prompt(topic):
+    prompt = f"次のトピックについて140字以内で要約してください。畏まりすぎない丁寧語でお願いします: {topic}"
     try:
         response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-        return response.text.strip() if response.text else "AIの考察を生成できませんでした。"
+        return response.text.strip() if response.text else "要約が生成できませんでした。"
     except Exception as e:
-        raise Exception(f"Gemini APIエラー (長文生成): {e}")
-
-# 長文からトピックを抽出
-def generate_topics_with_improved_prompt(message):
-    prompt = f"""
-    次の文章から重要なトピックを抽出してください。
-    - トピックは箇条書き形式で出力してください。
-    - 1つのトピックは20～50文字程度に簡潔にまとめてください。
-    - 曖昧な表現や文脈を持たないフレーズ（例: "さらに" や "以下のように"）を含めないでください。
-    - 文章内で強調されている重要なキーワードやテーマに基づいてトピックを抽出してください。
-    対象の文章:
-    {message}
-    """
-    response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-    topics_text = response.text.strip() if response.text else "トピックが生成できませんでした。"
-    topics = [topic.strip() for topic in topics_text.split("\n") if topic.strip()]
-    return topics
-
-# トピックを基に140字以内で要約
-def summarize_topic_with_improved_prompt(topic):
-    prompt = f"""
-    次のトピックについて、140字以内で要約してください。
-    - 要約は丁寧語で、簡潔かつ明確に記述してください。
-    - トピックの重要なポイントを中心に、読者に伝わりやすいようにしてください。
-    - 具体例や数字があれば、それを盛り込んでください。
-    トピック:
-    {topic}
-    """
-    response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-    return response.text.strip() if response.text else "要約が生成できませんでした。"
+        print(f"⚠️ Gemini APIエラー (要約生成): {e}")
+        if GEMINI_API_KEY2:
+            print("GEMINI_API_KEY2 に切り替えます...")
+            configure_gemini(GEMINI_API_KEY2)
+            return summarize_topic_with_improved_prompt(topic)
+        else:
+            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
 
 # Slackに投稿
 def post_to_slack(channel_id, message):
@@ -108,12 +113,9 @@ if __name__ == "__main__":
         else:
             prompt = "人工知能の歴史について詳しく説明してください。"
 
-        # 140字以上の文章を生成
-        long_message = retry_with_backoff(generate_long_message, prompt=prompt)
+        # 長文とトピックを同時に生成
+        long_message, topics = retry_with_backoff(generate_long_message_and_topics, prompt=prompt)
         print(f"生成された長文: {long_message}")
-
-        # 長文から複数のトピックを抽出
-        topics = retry_with_backoff(generate_topics_with_improved_prompt, message=long_message)
         print(f"抽出されたトピック: {topics}")
 
         if not topics:
