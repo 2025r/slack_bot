@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
         # 投稿メッセージを準備
         today_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        message = f"📢 {today_date} のAI投稿: {ai_message}"
+        message = f"📢 AIの投稿: {ai_message}"
 
         # Slackに投稿
         post_to_slack(dm_channel_id, message)
