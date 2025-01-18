@@ -12,11 +12,11 @@ if not SLACK_TOKEN or not SLACK_USER_ID:
 # Slack API エンドポイント
 SLACK_API_URL = "https://slack.com/api"
 
-# 過去5分間のDMメッセージを取得
+# 過去5時間のDMメッセージを取得
 def fetch_recent_dm_messages():
     headers = {"Authorization": f"Bearer {SLACK_TOKEN}"}
     now = datetime.now()
-    oldest = (now - timedelta(minutes=5)).timestamp()
+    oldest = (now - timedelta(hours=5)).timestamp()  # 過去5時間のメッセージを取得
 
     # DM チャンネルを検索
     response = requests.get(
@@ -25,8 +25,6 @@ def fetch_recent_dm_messages():
         params={"types": "im"}  # DM チャンネルのみを取得
     )
     channels_data = response.json()
-    print(f"DM チャンネル検索レスポンス: {channels_data}")
-
     if not channels_data.get("ok"):
         raise Exception(f"Slack APIエラー: {channels_data.get('error')}")
 
@@ -47,22 +45,26 @@ def fetch_recent_dm_messages():
         params={"channel": dm_channel_id, "oldest": oldest}
     )
     messages_data = response.json()
-    print(f"メッセージ履歴レスポンス: {messages_data}")
-
     if not messages_data.get("ok"):
         raise Exception(f"Slack APIエラー: {messages_data.get('error')}")
 
     return messages_data.get("messages", []), dm_channel_id
 
 # メッセージに返信
-def reply_to_dm_message(dm_channel_id, ts, text):
+def reply_to_dm_summary(dm_channel_id, messages):
     headers = {"Authorization": f"Bearer {SLACK_TOKEN}", "Content-Type": "application/json"}
-    reply_text = f"返信: {text} に対するボットからの返信です！"
-    payload = {"channel": dm_channel_id, "text": reply_text, "thread_ts": ts}
+    
+    if messages:
+        # メッセージをまとめる
+        summary = "\n".join([f"- {msg.get('text')}" for msg in messages])
+        reply_text = f"以下は過去5時間のメッセージです:\n{summary}"
+    else:
+        # メッセージがない場合
+        reply_text = "最近のメッセージはありませんでした。"
 
+    payload = {"channel": dm_channel_id, "text": reply_text}
     response = requests.post(f"{SLACK_API_URL}/chat.postMessage", headers=headers, json=payload)
     data = response.json()
-    print(f"返信レスポンス: {data}")
 
     if not data.get("ok"):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
@@ -72,11 +74,6 @@ def reply_to_dm_message(dm_channel_id, ts, text):
 if __name__ == "__main__":
     try:
         messages, dm_channel_id = fetch_recent_dm_messages()
-        for message in messages:
-            # 条件を取り除き、すべてのメッセージを処理
-            ts = message.get("ts")
-            text = message.get("text", "")
-            if text:  # テキストが存在する場合のみ返信
-                reply_to_dm_message(dm_channel_id, ts, text)
+        reply_to_dm_summary(dm_channel_id, messages)
     except Exception as e:
         print(f"❌ エラーが発生しました: {e}")
