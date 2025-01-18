@@ -65,6 +65,15 @@ def reply_to_dm_message(dm_channel_id, ts, text):
 
 # 実行
 if __name__ == "__main__":
+    # DM チャンネル検索時のレスポンス
+    print(f"DM チャンネル検索レスポンス: {response.json()}")
+    
+    # メッセージ取得時のレスポンス
+    print(f"メッセージ履歴レスポンス: {messages_data}")
+    
+    # 各メッセージの内容を確認
+    print(f"取得したメッセージ: {messages}")
+
     messages, dm_channel_id = fetch_recent_dm_messages()
     for message in messages:
         if "bot_id" not in message:  # ボット以外の投稿を処理
