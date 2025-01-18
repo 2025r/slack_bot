@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
         # Slackに投稿
         today_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        message = f"📢 AIの投稿 ({today_date}):\n{new_message}"
+        message = f"📢 AIの投稿 {new_message}"
         post_to_slack(dm_channel_id, message)
 
     except Exception as e:
