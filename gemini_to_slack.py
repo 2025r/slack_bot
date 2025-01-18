@@ -1,6 +1,6 @@
+import os
 import requests
 import google.generativeai as genai
-import os
 from datetime import datetime
 
 # 環境変数から API キーを取得
@@ -28,11 +28,31 @@ def get_dm_channel_id(user_id):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
     return data["channel"]["id"]
 
+# DMチャネル内の最後のメッセージを取得
+def get_last_message(channel_id):
+    response = requests.get(
+        f"{SLACK_API_URL}/conversations.history",
+        headers=headers,
+        params={"channel": channel_id, "limit": 1}  # 最新メッセージ1件を取得
+    )
+    data = response.json()
+    if not data.get("ok"):
+        raise Exception(f"Slack APIエラー: {data.get('error')}")
+    messages = data.get("messages", [])
+    return messages[0]["text"] if messages else None
+
 # Gemini AI に基づく投稿内容を生成
 def generate_ai_message(last_message=None):
-    prompt = "人工知能の歴史について、コメントを生成してください。" if not last_message else f"前回の投稿『{last_message}』をもとに人工知能の歴史を拡張した内容を生成してください。"
+    prompt = (
+        "人工知能の歴史について、簡潔に説明してください。"
+        if not last_message
+        else f"前回の投稿『{last_message[:50]}』を基に、人工知能の歴史を拡張したコメントを生成してください。"
+    )
+    genai.configure(api_key=GEMINI_API_KEY)
     response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
-    return response.text if response.text else "AIの考察を生成できませんでした。"
+    generated_text = response.text if response.text else "AIの考察を生成できませんでした。"
+    # 140文字にトリミング
+    return generated_text[:140] + "..." if len(generated_text) > 140 else generated_text
 
 # Slack に投稿
 def post_to_slack(channel_id, message):
@@ -49,12 +69,15 @@ if __name__ == "__main__":
         # DMチャネルIDを取得
         dm_channel_id = get_dm_channel_id(SLACK_USER_ID)
 
+        # 最後のメッセージを取得
+        last_message = get_last_message(dm_channel_id)
+
         # Gemini AIで新しい投稿を生成
-        ai_message = generate_ai_message()
+        ai_message = generate_ai_message(last_message)
 
         # 投稿メッセージを準備
         today_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        message = f"📢 AIの投稿: {ai_message}"
+        message = f"📢 {today_date} のAI投稿:\n{ai_message}"
 
         # Slackに投稿
         post_to_slack(dm_channel_id, message)
