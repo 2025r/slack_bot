@@ -1,0 +1,29 @@
+name: Gemini Summary Bot
+
+on:
+  schedule:
+    - cron: "0 */5 * * *"  # 5時間ごとに実行 (必要に応じて変更してください)
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  summarize_and_post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v3
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: 依存関係をインストール
+        run: pip install -r requirements.txt
+
+      - name: Gemini で要約して Slack に投稿
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Gemini API キー
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}        # Slack トークン
+          SLACK_USER_ID: ${{ secrets.SLACK_USER_ID }}    # 監視対象の Slack ユーザーID
+        run: python gemini_sum_posts.py
