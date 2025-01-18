@@ -2,7 +2,7 @@ name: Gemini Summary Bot
 
 on:
   schedule:
-    - cron: "0 */5 * * *"  # 5時間ごとに実行 (必要に応じて変更してください)
+    - cron: "*/5 * * * *"  # 5分ごとに実行
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
