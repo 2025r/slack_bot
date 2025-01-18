@@ -2,7 +2,7 @@ name: Slack Auto Post Test
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # 毎日午前 0 時 (UTC)
+    - cron: '*/30 * * * *'  # 毎日午前 0 時 (UTC)
   workflow_dispatch:
 
 jobs:
