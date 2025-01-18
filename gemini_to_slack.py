@@ -47,7 +47,7 @@ def generate_topics_from_message(message):
 
 # トピックを基に140字以内に要約
 def summarize_message_from_topic(topic):
-    prompt = f"次のトピックについて140字以内で要約してください: {topic}"
+    prompt = f"次のトピックについて140字以内で要約してください。畏まりすぎない丁寧語でお願いします。: {topic}"
     response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
     return response.text.strip() if response.text else "要約が生成できませんでした。"
 
