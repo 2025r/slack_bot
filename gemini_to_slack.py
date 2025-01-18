@@ -37,6 +37,14 @@ def get_dm_channel_id(user_id):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
     return data["channel"]["id"]
 
+# 140字以上の文章を生成
+def generate_long_message(prompt):
+    try:
+        response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
+        return response.text.strip() if response.text else "AIの考察を生成できませんでした。"
+    except Exception as e:
+        raise Exception(f"Gemini APIエラー (長文生成): {e}")
+
 # 長文からトピックを抽出
 def generate_topics_with_improved_prompt(message):
     prompt = f"""
@@ -45,8 +53,6 @@ def generate_topics_with_improved_prompt(message):
     - 1つのトピックは20～50文字程度に簡潔にまとめてください。
     - 曖昧な表現や文脈を持たないフレーズ（例: "さらに" や "以下のように"）を含めないでください。
     - 文章内で強調されている重要なキーワードやテーマに基づいてトピックを抽出してください。
-    - トピックは完全な文または意味のあるフレーズである必要があります。
-
     対象の文章:
     {message}
     """
@@ -62,7 +68,6 @@ def summarize_topic_with_improved_prompt(topic):
     - 要約は丁寧語で、簡潔かつ明確に記述してください。
     - トピックの重要なポイントを中心に、読者に伝わりやすいようにしてください。
     - 具体例や数字があれば、それを盛り込んでください。
-
     トピック:
     {topic}
     """
