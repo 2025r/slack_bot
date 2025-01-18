@@ -38,6 +38,21 @@ def get_dm_channel_id(user_id):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
     return data["channel"]["id"]
 
+# 最新のDMメッセージを取得
+def get_last_message(channel_id):
+    response = requests.get(
+        f"{SLACK_API_URL}/conversations.history",
+        headers=headers,
+        params={"channel": channel_id, "limit": 1}
+    )
+    data = response.json()
+    if not data.get("ok"):
+        raise Exception(f"Slack APIエラー: {data.get('error')}")
+    messages = data.get("messages", [])
+    if messages:
+        return messages[0].get("text")
+    return None
+
 # 140字以上の文章を生成
 def generate_long_message(prompt):
     try:
@@ -113,8 +128,9 @@ if __name__ == "__main__":
         # DMチャネルIDを取得
         dm_channel_id = retry_with_backoff(get_dm_channel_id, user_id=SLACK_USER_ID)
 
-        # 初回または前回の投稿内容 (仮に last_message を None とする)
-        last_message = None  # 初回は None、以降はSlack投稿内容などをここに設定
+        # 前回の投稿内容を取得
+        last_message = retry_with_backoff(get_last_message, channel_id=dm_channel_id)
+        print(f"前回の投稿内容: {last_message}")
 
         # 初回または次の内容を生成
         if last_message:
