@@ -7,6 +7,7 @@ import time
 
 # 環境変数から API キーを取得
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY2 = os.getenv("GEMINI_API_KEY2")
 SLACK_TOKEN = os.getenv("SLACK_TOKEN")
 SLACK_USER_ID = os.getenv("SLACK_USER_ID")  # DM先のユーザーID
 
@@ -14,12 +15,16 @@ SLACK_USER_ID = os.getenv("SLACK_USER_ID")  # DM先のユーザーID
 if not GEMINI_API_KEY or not SLACK_TOKEN or not SLACK_USER_ID:
     raise ValueError("環境変数 (GEMINI_API_KEY, SLACK_TOKEN, SLACK_USER_ID) が設定されていません。")
 
-# Geminiの設定
-genai.configure(api_key=GEMINI_API_KEY)
-
 # Slack API エンドポイント
 SLACK_API_URL = "https://slack.com/api"
 headers = {"Authorization": f"Bearer {SLACK_TOKEN}"}
+
+# Geminiの初期設定
+def configure_gemini(api_key):
+    genai.configure(api_key=api_key)
+    print(f"Gemini APIキー {api_key} を使用します。")
+
+configure_gemini(GEMINI_API_KEY)
 
 # DMチャネルのIDを取得
 def get_dm_channel_id(user_id):
@@ -39,7 +44,14 @@ def generate_long_message(prompt):
         response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
         return response.text.strip() if response.text else "AIの考察を生成できませんでした。"
     except Exception as e:
-        raise Exception(f"Gemini APIエラー: {e}")
+        print(f"⚠️ Gemini APIエラー (長文生成): {e}")
+        if GEMINI_API_KEY2:
+            print("GEMINI_API_KEY2 に切り替えます...")
+            configure_gemini(GEMINI_API_KEY2)
+            response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
+            return response.text.strip() if response.text else "AIの考察を生成できませんでした。"
+        else:
+            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
 
 # トピックを生成（複数のトピックを抽出）
 def generate_topics_from_message(message):
@@ -50,7 +62,15 @@ def generate_topics_from_message(message):
         topics = [topic.strip() for topic in topics_text.split("\n") if topic.strip()]
         return topics
     except Exception as e:
-        raise Exception(f"Gemini APIエラー (トピック生成): {e}")
+        print(f"⚠️ Gemini APIエラー (トピック生成): {e}")
+        if GEMINI_API_KEY2:
+            print("GEMINI_API_KEY2 に切り替えます...")
+            configure_gemini(GEMINI_API_KEY2)
+            response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
+            topics_text = response.text.strip() if response.text else "トピックが生成できませんでした。"
+            return [topic.strip() for topic in topics_text.split("\n") if topic.strip()]
+        else:
+            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
 
 # トピックを基に140字以内に要約
 def summarize_message_from_topic(topic):
@@ -59,7 +79,14 @@ def summarize_message_from_topic(topic):
         response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
         return response.text.strip() if response.text else "要約が生成できませんでした。"
     except Exception as e:
-        raise Exception(f"Gemini APIエラー (要約生成): {e}")
+        print(f"⚠️ Gemini APIエラー (要約生成): {e}")
+        if GEMINI_API_KEY2:
+            print("GEMINI_API_KEY2 に切り替えます...")
+            configure_gemini(GEMINI_API_KEY2)
+            response = genai.GenerativeModel(model_name="gemini-1.5-pro").generate_content(contents=[prompt])
+            return response.text.strip() if response.text else "要約が生成できませんでした。"
+        else:
+            raise Exception("Gemini APIエラー: 他のAPIキーが利用できません。")
 
 # Slackに投稿
 def post_to_slack(channel_id, message):
