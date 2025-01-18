@@ -18,13 +18,15 @@ def fetch_recent_dm_messages():
     now = datetime.now()
     oldest = (now - timedelta(minutes=5)).timestamp()
 
-    # ボットとの DM チャンネルを検索
+    # DM チャンネルを検索
     response = requests.get(
         f"{SLACK_API_URL}/conversations.list",
         headers=headers,
         params={"types": "im"}  # DM チャンネルのみを取得
     )
     channels_data = response.json()
+    print(f"DM チャンネル検索レスポンス: {channels_data}")
+
     if not channels_data.get("ok"):
         raise Exception(f"Slack APIエラー: {channels_data.get('error')}")
 
@@ -45,6 +47,8 @@ def fetch_recent_dm_messages():
         params={"channel": dm_channel_id, "oldest": oldest}
     )
     messages_data = response.json()
+    print(f"メッセージ履歴レスポンス: {messages_data}")
+
     if not messages_data.get("ok"):
         raise Exception(f"Slack APIエラー: {messages_data.get('error')}")
 
@@ -58,6 +62,7 @@ def reply_to_dm_message(dm_channel_id, ts, text):
 
     response = requests.post(f"{SLACK_API_URL}/chat.postMessage", headers=headers, json=payload)
     data = response.json()
+    print(f"返信レスポンス: {data}")
 
     if not data.get("ok"):
         raise Exception(f"Slack APIエラー: {data.get('error')}")
@@ -65,18 +70,12 @@ def reply_to_dm_message(dm_channel_id, ts, text):
 
 # 実行
 if __name__ == "__main__":
-    # DM チャンネル検索時のレスポンス
-    print(f"DM チャンネル検索レスポンス: {response.json()}")
-    
-    # メッセージ取得時のレスポンス
-    print(f"メッセージ履歴レスポンス: {messages_data}")
-    
-    # 各メッセージの内容を確認
-    print(f"取得したメッセージ: {messages}")
-
-    messages, dm_channel_id = fetch_recent_dm_messages()
-    for message in messages:
-        if "bot_id" not in message:  # ボット以外の投稿を処理
-            ts = message.get("ts")
-            text = message.get("text")
-            reply_to_dm_message(dm_channel_id, ts, text)
+    try:
+        messages, dm_channel_id = fetch_recent_dm_messages()
+        for message in messages:
+            if "bot_id" not in message:  # ボット以外の投稿を処理
+                ts = message.get("ts")
+                text = message.get("text")
+                reply_to_dm_message(dm_channel_id, ts, text)
+    except Exception as e:
+        print(f"❌ エラーが発生しました: {e}")
