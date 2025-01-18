@@ -16,7 +16,7 @@ SLACK_API_URL = "https://slack.com/api"
 def fetch_recent_dm_messages():
     headers = {"Authorization": f"Bearer {SLACK_TOKEN}"}
     now = datetime.now()
-    oldest = (now - timedelta(hours=5)).timestamp()  # 過去5時間のメッセージを取得
+    oldest = (now - timedelta(hours=2)).timestamp()  # 過去5時間のメッセージを取得
 
     # DM チャンネルを検索
     response = requests.get(
